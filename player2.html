@@ -1,0 +1,137 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Pong</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <script src="http://172.26.104.235:8080/socket.io/socket.io.js"></script>
+    <style>
+      * {
+        border: 0;
+        padding: 0;
+        margin: 0;
+      }
+      body {
+        background-image: url("player1.jpg");
+      }
+      #gameover{
+        
+      }
+    </style>
+  </head>
+  <body >
+    <div id="game"></div>
+    <div id="gameover">
+
+    </div>
+    <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="https://rawgithub.com/craftyjs/Crafty/release/dist/crafty-min.js"></script>
+    <script>
+      var width = 1002;
+      var height = 563;
+      var margin = 90;
+      var marginY = 30;
+      var size = 50;
+      var positionX = width/2-size/2;
+      var speedX = 3;
+
+
+      // screen resolution
+      Crafty.init(width, height, document.getElementById('game'));
+      // "e" is necessary here
+      var paddle = Crafty.e('2D, Canvas, Image, DOM, Floor')
+        .image("pusher2.png")
+        .attr({x: width/2-size/2, y: height-size-marginY, w: size, h: size})
+        .bind('EnterFrame', function(event){
+          this.x = positionX;
+          if(positionX<margin){
+            positionX = margin;
+          }
+          if(positionX>width-margin){
+            positionX = width-margin;
+          }
+        })
+
+
+            // accelerameter, control the paddle
+              window.ondevicemotion = function(event) {
+                var accelerationX = event.accelerationIncludingGravity.y;
+                accelText.text(accelerationX);
+                positionX = width/2-size/2-accelerationX*100;
+              }
+
+              var accelText = Crafty.e('2D, Canvas, Text')
+                .text('accelText')
+                .attr ({x: 10, y: 10})
+                .textColor('red')
+                .textFont({size: '24px'});
+
+
+
+
+
+
+          // after the cube comes from player2
+    function start(speedX, speedY, posX, player2){
+      console.log("working");
+      var player1 = false;
+
+      // cube
+      var cube = Crafty.e('2D, Canvas, Collision, Image')
+        .image('cube.png')
+        .attr({x: posX, y: 1})
+        .bind('EnterFrame', function(event){
+          if (this.x <= margin){
+           this.x = margin+1;
+           speedX *= -1;
+         }
+         if (this.x >= width-size-margin){
+          this.x = width-size-margin-1;
+          speedX *= -1;
+        }
+        if (this.y <= 0 && player1 == false){
+          player1 = true;
+          socket.emit('update-server', {'speedX':speedX, 'speedY': speedY, 'posX': this.x, 'p1': player1});
+
+        }
+        if (this.y <= -size && player2 == true) {
+          player2 = false;
+        }
+        if (player2 == true){
+         this.x += speedX;
+         this.y += speedY;
+       }
+       if (this.y >= height-marginY){
+         socket.emit('update-server', {'over': 1});
+
+       }
+
+
+        })
+        .checkHits('Floor')
+        .bind('HitOn', function(hit){
+          speedY += 1;
+          speedY *= -1;
+
+        })
+    }
+
+
+      // socket:
+      var socket = io('http://172.26.104.235:8080');
+      socket.on('update-client', function (data) {
+        console.log(data);
+        if(data.p2 == true) {
+          console.log('it should work')
+          var speedX = -data.speedX;
+          var speedY = -data.speedY;
+          var posX = width-data.posX
+          start(speedX, speedY, posX, data.p2);
+        }
+      });
+
+
+    </script>
+  </body>
+</html>
